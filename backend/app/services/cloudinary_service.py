@@ -1,4 +1,5 @@
 import cloudinary
+import cloudinary.uploader
 from app.core.logger import logger
 from app.core.config import settings
 
