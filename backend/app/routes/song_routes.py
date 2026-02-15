@@ -3,6 +3,7 @@ from app.schemas.song_create_model import SongCreate, SongUpdate
 from app.core.logger import logger
 from app.repository.songs import SongRepository
 from app.services.cloudinary_service import CloudinaryService
+from app.services.audio_metadata_service import AudioMetadataService
 
 router = APIRouter(
     prefix='/songs',
@@ -13,6 +14,7 @@ router = APIRouter(
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_song(song: SongCreate):
     try:
+      
         song_id = SongRepository.add_song(
             title=song.title,
             artist=song.artist,
@@ -40,10 +42,11 @@ def create_song(
     title: str = Form(...),
     artist: str = Form(...),
     album: str = Form(...),
-    duration: float = Form(...),
+    # duration: float = Form(...),
     audio: UploadFile = File(...)
 ):
     try:
+        duration = AudioMetadataService.get_duration(audio) 
         song_id = SongRepository.add_song(
             title=title,
             artist=artist,
@@ -54,6 +57,7 @@ def create_song(
         )
 
         try:
+            audio.file.seek(0)
             audio_url = CloudinaryService.upload_audio_file(audio, song_id)
 
             SongRepository.update_song(
