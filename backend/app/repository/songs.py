@@ -36,7 +36,7 @@ class SongRepository:
                 conn.commit()
                 song_id = result.scalar()
 
-                logger.info(f"Soong Inserted With ID: {song_id}")
+                logger.info(f"Song Inserted With ID: {song_id}")
                 return song_id
 
         except SQLAlchemyError as e:
