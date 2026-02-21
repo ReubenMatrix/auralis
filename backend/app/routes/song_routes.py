@@ -2,9 +2,10 @@ from fastapi import APIRouter, HTTPException, status, UploadFile, File, Form
 from app.schemas.song_create_model import SongCreate, SongUpdate
 from app.core.logger import logger
 from app.repository.songs import SongRepository
+from app.repository.fingerprint import FingerprintRepository
 from app.services.cloudinary_service import CloudinaryService
 from app.services.audio_metadata_service import AudioMetadataService
-
+from app.services.song_to_fingerprint_service import SongToFingerprintService
 router = APIRouter(
     prefix='/songs',
     tags=["Songs"]
@@ -65,6 +66,16 @@ def create_song(
                 file_path=audio_url,
                 status="COMPLETED"
             )
+
+
+            SongToFingerprintService.fingerprint_and_store(
+                audio_file=audio.file,
+                song_id=song_id
+            )
+
+        
+ 
+
 
             return {
                 "message": "Song uploaded successfully",
