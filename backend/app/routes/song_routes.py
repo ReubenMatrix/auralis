@@ -6,6 +6,8 @@ from app.repository.fingerprint import FingerprintRepository
 from app.services.cloudinary_service import CloudinaryService
 from app.services.audio_metadata_service import AudioMetadataService
 from app.services.song_to_fingerprint_service import SongToFingerprintService
+from app.services.song_match_service import SongMatchService
+
 router = APIRouter(
     prefix='/songs',
     tags=["Songs"]
@@ -127,4 +129,43 @@ def update_song(song_id: int, song: SongUpdate):
         raise HTTPException(
             status_code=400,
             detail=str(e)
+        )
+
+
+
+@router.post(
+    "/match",
+    status_code=status.HTTP_200_OK
+)
+def match_song(audio: UploadFile = File(...)):
+    """
+    Upload a short audio clip to identify the song
+    """
+
+    # Basic validation
+    if not audio.content_type.startswith("audio/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Please upload an audio file."
+        )
+
+    try:
+        result = SongMatchService.match_song(audio)
+
+        if not result:
+            return {
+                "matched": False,
+                "message": "No matching song found"
+            }
+
+        return {
+            "matched": True,
+            "song": result
+        }
+
+    except Exception as e:
+        logger.error(f"Song match failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Song matching failed"
         )

@@ -36,6 +36,31 @@ class FingerprintService:
                      time_offset = time_offset
                     ))  
         return fingerprints
+    
+
+    @staticmethod
+    def generate_query_fingerprints(audio_path: str):
+        peak_points, sr = AudioProcessingService.extract_peaks(audio_path)
+        fingerprints = []
+
+        for i in range(len(peak_points)):
+            freq1, time1 = peak_points[i]
+
+            for j in range(1, FingerprintService.FAN_VALUE):
+                if i + j >= len(peak_points):
+                    break
+
+                freq2, time2 = peak_points[i + j]
+                delta = time2 - time1
+
+                if 0 < delta <= 200:
+                    raw = f"{freq1}|||{freq2}|||{delta}"
+                    hash_value = hashlib.md5(raw.encode()).hexdigest()
+                    time_offset = time1 * AudioProcessingService.HOP_LENGTH / sr
+
+                    fingerprints.append((hash_value, time_offset))
+
+        return fingerprints
 
 
 
