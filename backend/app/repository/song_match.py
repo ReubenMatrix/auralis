@@ -1,4 +1,4 @@
-from app.repository.db import get_db_connection
+from app.db.base import get_db_connection
 from sqlalchemy import text
 
 class SongMatchRepository:

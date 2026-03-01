@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, UploadFile, File, Form
+import os
 from app.schemas.song_create_model import SongCreate, SongUpdate
 from app.core.logger import logger
 from app.repository.songs import SongRepository
@@ -7,6 +8,7 @@ from app.services.cloudinary_service import CloudinaryService
 from app.services.audio_metadata_service import AudioMetadataService
 from app.services.song_to_fingerprint_service import SongToFingerprintService
 from app.services.song_match_service import SongMatchService
+from app.tasks.task import process_audio_task
 
 router = APIRouter(
     prefix='/songs',
@@ -49,48 +51,59 @@ def create_song(
     audio: UploadFile = File(...)
 ):
     try:
-        duration = AudioMetadataService.get_duration(audio) 
+        
         song_id = SongRepository.add_song(
             title=title,
             artist=artist,
             album=album,
-            duration=duration,
+            duration=None,
             file_path=None,
             status="PENDING"
         )
 
-        try:
-            audio.file.seek(0)
-            audio_url = CloudinaryService.upload_audio_file(audio, song_id)
+        os.makedirs("temp", exist_ok=True)
+        file_path = f"temp/{song_id}_{audio.filename}"
 
-            SongRepository.update_song(
-                song_id=song_id,
-                file_path=audio_url,
-                status="COMPLETED"
-            )
+        with open(file_path, "wb") as f:
+            f.write(audio.file.read())
 
+       
+        process_audio_task.delay(
+            song_id=song_id,
+            file_path=file_path
+        )
 
-            SongToFingerprintService.fingerprint_and_store(
-                audio_file=audio.file,
-                song_id=song_id
-            )
-
-        
- 
+        return {"message": "Upload in progress", "song_id": song_id, "status": "PENDING"}
 
 
-            return {
-                "message": "Song uploaded successfully",
-                "song_id": song_id,
-                "audio_url": audio_url
-            }
+        # try:
+        #     audio.file.seek(0)
+        #     audio_url = CloudinaryService.upload_audio_file(audio, song_id)
 
-        except Exception as upload_error:
-            SongRepository.update_song(
-                song_id=song_id,
-                status="FAILED"
-            )
-            raise upload_error
+        #     SongRepository.update_song(
+        #         song_id=song_id,
+        #         file_path=audio_url,
+        #         status="COMPLETED"
+        #     )
+
+
+        #     SongToFingerprintService.fingerprint_and_store(
+        #         audio_file=audio.file,
+        #         song_id=song_id
+        #     )
+
+        #     return {
+        #         "message": "Song uploaded successfully",
+        #         "song_id": song_id,
+        #         "audio_url": audio_url
+        #     }
+
+        # except Exception as upload_error:
+        #     SongRepository.update_song(
+        #         song_id=song_id,
+        #         status="FAILED"
+        #     )
+        #     raise upload_error
 
     except Exception as e:
         logger.error(f"Failed To Create Song: {e}")
@@ -111,7 +124,7 @@ def update_song(song_id: int, song: SongUpdate):
             duration=song.duration,
             file_path=song.file_path,
             status=song.status
-        ),
+        )
 
         if not updated:
             raise HTTPException(

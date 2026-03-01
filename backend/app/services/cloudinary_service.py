@@ -17,7 +17,7 @@ class CloudinaryService:
     def upload_audio_file(file, song_id:int):
         try:
             result = cloudinary.uploader.upload(
-                file.file,
+                file,
                 resource_type = "video",
                 public_id=f"song_{song_id}",
                 folder="shazam/audio"
